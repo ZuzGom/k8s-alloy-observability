@@ -1,8 +1,8 @@
 # k8s-alloy-observability
 Kubernetes observability setup using Grafana Alloy as an OpenTelemetry Collector to gather, process, and export telemetry data from cluster workloads.
 
-Authors:
-Zuzanna Gomuła
-Mikołaj Gosztyła
-Ola Fąfara
-Kacper Kozubowski
+### Authors:
+Zuzanna Gomuła \
+Mikołaj Gosztyła \
+Ola Fąfara \
+Kacper Kozubowski 
