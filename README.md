@@ -7,7 +7,8 @@ Ten projekt demonstruje nowoczesne podejście do obserwacyjności w środowisku 
 # Architektura Systemu (High-Level)
 Poniższy schemat przedstawia architektóre systemu:
 
-<img width="1060" height="637" alt="image" src="https://github.com/user-attachments/assets/81be87bf-4af3-474e-a78a-c93d434de5f6" />
+<!-- <img width="1060" height="637" alt="image" src="https://github.com/user-attachments/assets/81be87bf-4af3-474e-a78a-c93d434de5f6" /> -->
+![diagram](docs/diagram.svg)
 
 Opis Komponentów Architektury:
 1. Traffic Generation (User / k6): Symuluje ruch użytkowników oraz obciążenie HTTP, generując realne dane procesowe w aplikacji.
