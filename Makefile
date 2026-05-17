@@ -3,9 +3,10 @@ OLLY_NAMESPACE=olly
 DEPLOYMENT_FILE=./kubernetes/deployments.yml
 SERVICE_FILE=./kubernetes/services.yml
 K6_JOB=./kubernetes/k6-job.yml
-CONFIG_MAP=./kubernetes/config-map.yml
+CONFIG_MAP=./kubernetes/k6-config.yml
+ALLOY_CONFIG=./kubernetes/alloy-config.yml
 
-.PHONY: deploy delete status
+.PHONY: deploy delete status add-alloy
 
 # Deploy all
 deploy:
@@ -28,3 +29,6 @@ delete:
 status:
 	kubectl get all -n $(APPS_NAMESPACE)
 	kubectl get all -n $(OLLY_NAMESPACE)
+
+add-alloy:
+	kubectl apply -f $(ALLOY_CONFIG)

@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alloy-config
+  namespace: olly
+data:
+  config.alloy: |
+    discovery.kubernetes "pods" {}
+
+    prometheus.scrape "pods" {
+      targets = discovery.kubernetes.pods.targets
+      forward_to = [prometheus.remote_write.default.receiver]
+    }
+
+    prometheus.remote_write "default" {
+      endpoint {
+        url = "http://monitoring-kube-prometheus-prometheus.olly:9090/api/v1/write"
+      }
+    }

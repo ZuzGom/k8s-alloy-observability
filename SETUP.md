@@ -1,6 +1,6 @@
 ## Uruchomienie localne
 ### Kubernetes na Minikube
-Aby uruchomić kluster należy pobrać [minikube](https://minikube.sigs.k8s.io/docs/start/?arch=%2Fwindows%2Fx86-64%2Fstable%2F.exe+download) oraz uruchomić instancje na dockerze. W pliku Makefile znajdują się 3 targety:
+Aby uruchomić kluster należy pobrać [minikube](https://minikube.sigs.k8s.io/docs/start/?arch=%2Fwindows%2Fx86-64%2Fstable%2F.exe+download) oraz uruchomić instancje na dockerze (`minikube start`). Jeżeli ustawiony jest kubectl config z zajęć to podmień na minikube: `kubectl config use-context minikube`. W pliku Makefile znajdują się 3 targety:
 
 ```Deploy całego clustra od 0
 make deploy
@@ -31,7 +31,12 @@ Jako k6 użyliśmy grafana:k6 dostępego na docker hub.
 
 ### Grafana na kubernetesie
 1. Należy pobrać [helm](https://helm.sh/docs/intro/install/). Na windows: ` winget install Helm.Helm `.
-2. Następnie wykonać:`helm repo add grafana https://grafana.github.io/helm-charts`. Pojawią się instrukcje do forwardowania portu i pozyskania hasła. Grafana dostępna będzie pod http://localhost:3000/. UWAGA! Namespace to olly, a nie apps.
+	- note: jeżeli coś wygląda jakby się nie pobrało to zrestartuj terminal albo: `helm repo update`
+2. Następnie wykonać:
+- `helm repo add grafana https://grafana.github.io/helm-charts`
+- `helm install grafana grafana/grafana -n olly --create-namespace`
+- `kubectl port-forward -n olly svc/grafana 3000:80`
+Po wykonaniu pierwszej komendy powinny pojawić się instrukcje do pozyskania hasła. Grafana dostępna będzie pod http://localhost:3000/. UWAGA! Namespace to olly, a nie apps.
 - duża szansa że pozyskanie hasła nie zadziała na Windowsie bo komendy są na bash, wtedy należy: `kubectl get secrets -n olly`, co zwróci:
 ```
 NAME                            TYPE                 DATA   AGE
@@ -46,4 +51,18 @@ W powershellu wykonujemy:
   )
 )
 ```
-Z uzyskanym hasłem możemy zalogować się do lokalnej grafany 
+Z uzyskanym hasłem możemy zalogować się do lokalnej grafany, username to `admin`. 
+
+### Dodanie Prometheus'a
+``` Zainstaluj prometheus
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+```
+``` Dodaj do namespace olly
+helm install monitoring prometheus-community/kube-prometheus-stack -n olly
+```
+```Dodaj alloy do klastra
+make add-alloy
+```
+```Jeżeli trzeba zresartuj alloy
+kubectl rollout restart deployment alloy -n olly
+```
