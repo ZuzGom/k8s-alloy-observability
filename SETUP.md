@@ -25,6 +25,22 @@ Do zarządzania wszystkimi serwisami używamy kubernetesa. Aplikacja i część 
 
 ### Przykładowa aplikacji
 Na ten moment będziemy używać przykładowej publiczej aplikacji: [repo](https://github.com/gitopsbook/sample-app-deployment/tree/master). W przyszłości zastąpimy ją aplikacją o bardziej złożonym api.
+Deployment zawiera sidecar `nginx`, który robi reverse proxy na `sample-app` i emituje access logi do stdout (zbierane przez Alloy -> Loki).
+Komendy do wykonania po tej zmianie:
+```
+kubectl apply -f .\kubernetes\deployments.yml -n apps
+kubectl apply -f .\kubernetes\services.yml -n apps
+kubectl rollout status deployment/sample-app -n apps --timeout=180s
+
+kubectl delete job k6-load-generator -n apps --ignore-not-found=true
+kubectl apply -f .\kubernetes\k6-job.yml
+kubectl wait --for=condition=complete job/k6-load-generator -n apps --timeout=180s
+
+kubectl logs -n apps -l app=sample-app -c nginx-sidecar --tail=50
+kubectl port-forward -n olly svc/loki 3100:3100
+```
+W Grafanie (Explore -> Loki) użyj:
+`{job="loki.source.kubernetes.sample_app"}`
 
 ### K6
 Jako k6 użyliśmy grafana:k6 dostępego na docker hub.
@@ -53,16 +69,60 @@ W powershellu wykonujemy:
 ```
 Z uzyskanym hasłem możemy zalogować się do lokalnej grafany, username to `admin`. 
 
-### Dodanie Prometheus'a
+### Dodanie Prometheus + Loki
 ``` Zainstaluj prometheus
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 ```
 ``` Dodaj do namespace olly
 helm install monitoring prometheus-community/kube-prometheus-stack -n olly
 ```
+``` Zainstaluj loki (log storage)
+helm install loki grafana/loki-stack -n olly `
+  --set loki.image.tag=2.9.8 `
+  --set promtail.enabled=false `
+  --set fluent-bit.enabled=false `
+  --set grafana.enabled=false
+```
+W Alloy logi są wysyłane do: `http://loki.olly:3100/loki/api/v1/push`.
+
 ```Dodaj alloy do klastra
 make add-alloy
 ```
+```Zainstaluj alloy
+ helm upgrade --install alloy grafana/alloy -n olly --create-namespace `
+   --set alloy.configMap.create=false `
+   --set alloy.configMap.name=alloy-config `
+   --set alloy.configMap.key=config.alloy `
+   --set controller.type=deployment
+```
 ```Jeżeli trzeba zresartuj alloy
 kubectl rollout restart deployment alloy -n olly
+```
+```Zobacz czy działa
+kubectl rollout status deployment/alloy -n olly --timeout=180s
+```
+
+### Dodanie loki
+```
+helm repo add grafana https://grafana.github.io/helm-charts
+helm repo update
+
+helm upgrade --install loki grafana/loki-stack -n olly --create-namespace `
+  --set loki.image.tag=2.9.8 `
+  --set promtail.enabled=false `
+  --set fluent-bit.enabled=false `
+  --set grafana.enabled=false
+
+kubectl apply --dry-run=client -f .\kubernetes\alloy-config.yml -n olly
+kubectl apply -f .\kubernetes\alloy-config.yml -n olly
+
+kubectl rollout restart deployment/alloy -n olly
+kubectl rollout status deployment/alloy -n olly --timeout=180s
+
+kubectl wait --for=condition=Ready pod/loki-0 -n olly --timeout=180s
+kubectl logs -n olly deployment/alloy -c alloy --since=2m --tail=200
+```
+```Zrestartuj k6 żeby logi zaczęły wpływać do loki
+kubectl delete job k6-load-generator -n apps --ignore-not-found=true
+ kubectl apply -f .\kubernetes\k6-job.yml
 ```

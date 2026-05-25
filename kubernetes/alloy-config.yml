@@ -5,15 +5,89 @@ metadata:
   namespace: olly
 data:
   config.alloy: |
-    discovery.kubernetes "pods" {}
-
-    prometheus.scrape "pods" {
-      targets = discovery.kubernetes.pods.targets
-      forward_to = [prometheus.remote_write.default.receiver]
+    discovery.kubernetes "pods" {
+      role = "pod"
     }
 
-    prometheus.remote_write "default" {
-      endpoint {
-        url = "http://monitoring-kube-prometheus-prometheus.olly:9090/api/v1/write"
+    discovery.relabel "sample_app_pods" {
+      targets = discovery.kubernetes.pods.targets
+
+      rule {
+        action        = "keep"
+        source_labels = ["__meta_kubernetes_namespace"]
+        regex         = "apps"
+      }
+
+      rule {
+        action        = "keep"
+        source_labels = ["__meta_kubernetes_pod_label_app"]
+        regex         = "sample-app"
       }
     }
+
+    discovery.relabel "k6_pods" {
+      targets = discovery.kubernetes.pods.targets
+
+      rule {
+        action        = "keep"
+        source_labels = ["__meta_kubernetes_namespace"]
+        regex         = "apps"
+      }
+
+      rule {
+        action        = "keep"
+        source_labels = ["__meta_kubernetes_pod_label_job_name"]
+        regex         = "k6-load-generator"
+      }
+    }
+
+    loki.source.kubernetes "sample_app" {
+      targets    = discovery.relabel.sample_app_pods.output
+      forward_to = [loki.process.sample_app.receiver]
+    }
+
+    loki.source.kubernetes "k6" {
+      targets    = discovery.relabel.k6_pods.output
+      forward_to = [loki.process.k6.receiver]
+    }
+
+    loki.process "sample_app" {
+      forward_to = [loki.write.default.receiver]
+
+      stage.cri {}
+
+      stage.metrics {
+        metric.counter {
+          name              = "log_lines_total"
+          description       = "Total sample-app log lines seen by Alloy"
+          prefix            = "sample_app_"
+          action            = "inc"
+          match_all         = true
+          max_idle_duration = "24h"
+        }
+      }
+    }
+
+    loki.process "k6" {
+      forward_to = [loki.write.default.receiver]
+
+      stage.cri {}
+
+      stage.metrics {
+        metric.counter {
+          name              = "log_lines_total"
+          description       = "Total k6 log lines seen by Alloy"
+          prefix            = "k6_"
+          action            = "inc"
+          match_all         = true
+          max_idle_duration = "24h"
+        }
+      }
+    }
+
+    loki.write "default" {
+      endpoint {
+        url = "http://loki.olly:3100/loki/api/v1/push"
+      }
+    }
+
