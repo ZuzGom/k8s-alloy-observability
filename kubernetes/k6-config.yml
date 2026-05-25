@@ -8,6 +8,11 @@ data:
     import http from 'k6/http';
     import { sleep, check } from 'k6';
 
+    export const options = {
+      vus: 3,
+      duration: '5s',
+    };
+
     export default function () {
       let res = http.get(__ENV.TARGET_URL);
 
