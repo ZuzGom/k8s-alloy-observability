@@ -1,0 +1,10 @@
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - name: Loki
+        type: loki
+        access: proxy
+        url: http://loki.olly:3100
+        isDefault: true
+        editable: true

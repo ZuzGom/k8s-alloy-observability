@@ -5,6 +5,7 @@ SERVICE_FILE=./kubernetes/services.yml
 K6_JOB=./kubernetes/k6-job.yml
 CONFIG_MAP=./kubernetes/k6-config.yml
 ALLOY_CONFIG=./kubernetes/alloy-config.yml
+GRAFANA_VALUES=./kubernetes/grafana-values.yml
 GRAFANA_RELEASE=grafana
 LOKI_RELEASE=loki
 ALLOY_RELEASE=alloy
@@ -42,7 +43,7 @@ install-loki: namespaces
 install-grafana: namespaces
 	helm repo add grafana https://grafana.github.io/helm-charts --force-update
 	helm repo update
-	helm upgrade --install $(GRAFANA_RELEASE) $(GRAFANA_CHART) -n $(OLLY_NAMESPACE) --create-namespace
+	helm upgrade --install $(GRAFANA_RELEASE) $(GRAFANA_CHART) -n $(OLLY_NAMESPACE) --create-namespace -f $(GRAFANA_VALUES)
 
 # Install Alloy using the repository-managed ConfigMap
 install-alloy: namespaces
