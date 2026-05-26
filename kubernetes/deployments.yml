@@ -1,56 +1,118 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: sample-app
+  name: productpage
   namespace: apps
   labels:
-    app: sample-app
+    app: productpage
 spec:
   replicas: 1
   revisionHistoryLimit: 3
   selector:
     matchLabels:
-      app: sample-app
+      app: productpage
   template:
     metadata:
       labels:
-        app: sample-app
+        app: productpage
     spec:
       containers:
-        - name: sample-app
-          image: gitopsbook/sample-app:v0.1
-          command: ["/app/sample-app"]
+        - name: productpage
+          image: registry.istio.io/release/examples-bookinfo-productpage-v1:1.20.3
+          imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 8080
+            - containerPort: 9080
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: details
+  namespace: apps
+  labels:
+    app: details
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: details
+  template:
+    metadata:
+      labels:
+        app: details
+    spec:
+      containers:
+        - name: details
+          image: registry.istio.io/release/examples-bookinfo-details-v1:1.20.3
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ratings
+  namespace: apps
+  labels:
+    app: ratings
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: ratings
+  template:
+    metadata:
+      labels:
+        app: ratings
+    spec:
+      containers:
+        - name: ratings
+          image: registry.istio.io/release/examples-bookinfo-ratings-v1:1.20.3
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reviews
+  namespace: apps
+  labels:
+    app: reviews
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: reviews
+  template:
+    metadata:
+      labels:
+        app: reviews
+    spec:
+      containers:
+        - name: reviews
+          image: registry.istio.io/release/examples-bookinfo-reviews-v2:1.20.3
+          imagePullPolicy: IfNotPresent
           env:
-            - name: PORT
-              value: "8080"
-        - name: nginx-sidecar
-          image: nginx:1.27-alpine
-          command: ["/bin/sh", "-c"]
-          args:
-            - |
-              cat <<'EOF' > /etc/nginx/conf.d/default.conf
-              server {
-                listen 8081;
-                access_log /var/log/nginx/access.log;
-                error_log /var/log/nginx/error.log warn;
-
-                location / {
-                  proxy_set_header Host $host;
-                  proxy_set_header X-Real-IP $remote_addr;
-                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                  proxy_set_header X-Forwarded-Proto $scheme;
-                  proxy_pass http://127.0.0.1:8080;
-                }
-              }
-              EOF
-              nginx -g 'daemon off;'
+            - name: LOG_DIR
+              value: /tmp/logs
           ports:
-            - containerPort: 8081
-          readinessProbe:
-            httpGet:
-              path: /
-              port: 8081
-            initialDelaySeconds: 2
-            periodSeconds: 5
+            - containerPort: 9080
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: wlp-output
+              mountPath: /opt/ibm/wlp/output
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: wlp-output
+          emptyDir: {}

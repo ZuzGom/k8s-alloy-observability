@@ -9,12 +9,12 @@ data:
     import { sleep, check } from 'k6';
 
     export const options = {
-      vus: 3,
-      duration: '5s',
+      vus: 5,
+      duration: '30s',
     };
 
     export default function () {
-      let res = http.get(__ENV.TARGET_URL);
+      const res = http.get(__ENV.TARGET_URL);
 
       check(res, {
         'status is 200': (r) => r.status === 200,

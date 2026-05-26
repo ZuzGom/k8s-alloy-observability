@@ -13,7 +13,7 @@ spec:
           command: ["k6", "run", "/scripts/test.js"]
           env:
             - name: TARGET_URL
-              value: "http://sample-app.apps.svc.cluster.local"
+              value: "http://productpage.apps.svc.cluster.local:9080/productpage?product=1"
           volumeMounts:
             - name: script
               mountPath: /scripts
