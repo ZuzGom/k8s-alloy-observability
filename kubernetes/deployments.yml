@@ -5,7 +5,6 @@ metadata:
   namespace: apps
   labels:
     app: productpage
-    version: v1
 spec:
   replicas: 1
   revisionHistoryLimit: 3
@@ -16,13 +15,19 @@ spec:
     metadata:
       labels:
         app: productpage
-        version: v1
     spec:
       containers:
         - name: productpage
-          image: docker.io/istio/examples-bookinfo-productpage-v1:1.16.2
+          image: registry.istio.io/release/examples-bookinfo-productpage-v1:1.20.3
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 9080
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -31,7 +36,6 @@ metadata:
   namespace: apps
   labels:
     app: details
-    version: v1
 spec:
   replicas: 1
   revisionHistoryLimit: 3
@@ -42,11 +46,11 @@ spec:
     metadata:
       labels:
         app: details
-        version: v1
     spec:
       containers:
         - name: details
-          image: docker.io/istio/examples-bookinfo-details-v1:1.16.2
+          image: registry.istio.io/release/examples-bookinfo-details-v1:1.20.3
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 9080
 ---
@@ -57,7 +61,6 @@ metadata:
   namespace: apps
   labels:
     app: ratings
-    version: v1
 spec:
   replicas: 1
   revisionHistoryLimit: 3
@@ -68,64 +71,48 @@ spec:
     metadata:
       labels:
         app: ratings
-        version: v1
     spec:
       containers:
         - name: ratings
-          image: docker.io/istio/examples-bookinfo-ratings-v1:1.16.2
+          image: registry.istio.io/release/examples-bookinfo-ratings-v1:1.20.3
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 9080
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: reviews-v1
+  name: reviews
   namespace: apps
   labels:
     app: reviews
-    version: v1
 spec:
   replicas: 1
   revisionHistoryLimit: 3
   selector:
     matchLabels:
       app: reviews
-      version: v1
   template:
     metadata:
       labels:
         app: reviews
-        version: v1
     spec:
       containers:
-        - name: reviews-v1
-          image: docker.io/istio/examples-bookinfo-reviews-v1:1.16.2
+        - name: reviews
+          image: registry.istio.io/release/examples-bookinfo-reviews-v2:1.20.3
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: LOG_DIR
+              value: /tmp/logs
           ports:
             - containerPort: 9080
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: reviews-v2
-  namespace: apps
-  labels:
-    app: reviews
-    version: v2
-spec:
-  replicas: 1
-  revisionHistoryLimit: 3
-  selector:
-    matchLabels:
-      app: reviews
-      version: v2
-  template:
-    metadata:
-      labels:
-        app: reviews
-        version: v2
-    spec:
-      containers:
-        - name: reviews-v2
-          image: docker.io/istio/examples-bookinfo-reviews-v2:1.16.2
-          ports:
-            - containerPort: 9080
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: wlp-output
+              mountPath: /opt/ibm/wlp/output
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: wlp-output
+          emptyDir: {}
