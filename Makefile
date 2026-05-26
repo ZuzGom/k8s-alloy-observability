@@ -9,14 +9,16 @@ GRAFANA_VALUES=./kubernetes/grafana-values.yml
 GRAFANA_RELEASE=grafana
 LOKI_RELEASE=loki
 ALLOY_RELEASE=alloy
+PROMETHEUS_RELEASE=prometheus
 GRAFANA_CHART=grafana/grafana
 LOKI_CHART=grafana/loki-stack
 ALLOY_CHART=grafana/alloy
+PROMETHEUS_CHART=prometheus-community/prometheus
 
-.PHONY: deploy namespaces deploy-app install-loki install-grafana install-alloy restart-k6 port-forward-grafana delete status add-alloy
+.PHONY: deploy namespaces deploy-app install-loki install-grafana install-alloy install-prometheus restart-k6 port-forward-grafana port-forward-prometheus delete status add-alloy
 
 # Deploy all
-deploy: deploy-app install-loki install-grafana install-alloy restart-k6
+deploy: deploy-app install-loki install-prometheus install-grafana install-alloy restart-k6
 
 # Create namespaces used by the app and observability stack
 namespaces:
@@ -45,6 +47,12 @@ install-grafana: namespaces
 	helm repo update
 	helm upgrade --install $(GRAFANA_RELEASE) $(GRAFANA_CHART) -n $(OLLY_NAMESPACE) --create-namespace -f $(GRAFANA_VALUES)
 
+# Install Prometheus for Kubernetes and application metrics
+install-prometheus: namespaces
+	helm repo add prometheus-community https://prometheus-community.github.io/helm-charts --force-update
+	helm repo update
+	helm upgrade --install $(PROMETHEUS_RELEASE) $(PROMETHEUS_CHART) -n $(OLLY_NAMESPACE) --create-namespace
+
 # Install Alloy using the repository-managed ConfigMap
 install-alloy: namespaces
 	kubectl apply -f $(ALLOY_CONFIG)
@@ -65,11 +73,16 @@ restart-k6: namespaces
 port-forward-grafana:
 	kubectl port-forward -n $(OLLY_NAMESPACE) svc/$(GRAFANA_RELEASE) 3000:80
 
+# Open Prometheus locally at http://localhost:9090
+port-forward-prometheus:
+	kubectl port-forward -n $(OLLY_NAMESPACE) svc/$(PROMETHEUS_RELEASE)-server 9090:80
+
 # Delete all
 delete:
 	helm uninstall $(ALLOY_RELEASE) -n $(OLLY_NAMESPACE) --ignore-not-found
 	helm uninstall $(GRAFANA_RELEASE) -n $(OLLY_NAMESPACE) --ignore-not-found
 	helm uninstall $(LOKI_RELEASE) -n $(OLLY_NAMESPACE) --ignore-not-found
+	helm uninstall $(PROMETHEUS_RELEASE) -n $(OLLY_NAMESPACE) --ignore-not-found
 	kubectl delete -f $(K6_JOB) --ignore-not-found=true
 	kubectl delete -f $(CONFIG_MAP) --ignore-not-found=true
 	kubectl delete -f $(ALLOY_CONFIG) --ignore-not-found=true
