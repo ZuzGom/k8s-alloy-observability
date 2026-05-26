@@ -9,7 +9,7 @@ data:
       role = "pod"
     }
 
-    discovery.relabel "sample_app_pods" {
+    discovery.relabel "bookinfo_pods" {
       targets = discovery.kubernetes.pods.targets
 
       rule {
@@ -21,7 +21,7 @@ data:
       rule {
         action        = "keep"
         source_labels = ["__meta_kubernetes_pod_label_app"]
-        regex         = "sample-app"
+        regex         = "productpage|details|ratings|reviews"
       }
     }
 
@@ -41,9 +41,9 @@ data:
       }
     }
 
-    loki.source.kubernetes "sample_app" {
-      targets    = discovery.relabel.sample_app_pods.output
-      forward_to = [loki.process.sample_app.receiver]
+    loki.source.kubernetes "bookinfo" {
+      targets    = discovery.relabel.bookinfo_pods.output
+      forward_to = [loki.process.bookinfo.receiver]
     }
 
     loki.source.kubernetes "k6" {
@@ -51,7 +51,7 @@ data:
       forward_to = [loki.process.k6.receiver]
     }
 
-    loki.process "sample_app" {
+    loki.process "bookinfo" {
       forward_to = [loki.write.default.receiver]
 
       stage.cri {}
@@ -59,8 +59,8 @@ data:
       stage.metrics {
         metric.counter {
           name              = "log_lines_total"
-          description       = "Total sample-app log lines seen by Alloy"
-          prefix            = "sample_app_"
+          description       = "Total Bookinfo log lines seen by Alloy"
+          prefix            = "bookinfo_"
           action            = "inc"
           match_all         = true
           max_idle_duration = "24h"
