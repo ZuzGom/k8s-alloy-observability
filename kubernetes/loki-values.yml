@@ -1,0 +1,5 @@
+loki:
+  config:
+    limits_config:
+      volume_enabled: true
+      volume_max_series: 1000

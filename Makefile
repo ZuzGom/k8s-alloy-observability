@@ -6,6 +6,7 @@ K6_JOB=./kubernetes/k6-job.yml
 CONFIG_MAP=./kubernetes/k6-config.yml
 ALLOY_CONFIG=./kubernetes/alloy-config.yml
 GRAFANA_VALUES=./kubernetes/grafana-values.yml
+LOKI_VALUES=./kubernetes/loki-values.yml
 GRAFANA_RELEASE=grafana
 LOKI_RELEASE=loki
 ALLOY_RELEASE=alloy
@@ -15,10 +16,13 @@ LOKI_CHART=grafana/loki-stack
 ALLOY_CHART=grafana/alloy
 PROMETHEUS_CHART=prometheus-community/prometheus
 
-.PHONY: deploy namespaces deploy-app install-loki install-grafana install-alloy install-prometheus restart-k6 port-forward-grafana port-forward-prometheus delete status add-alloy
+.PHONY: deploy namespaces deploy-app install-loki install-grafana install-alloy install-prometheus restart-k6 port-forward-grafana port-forward-prometheus open-grafana grafana-password verify-loki install-mcp-grafana setup-mcp-grafana enable-mcp-grafana verify-mcp-grafana agent-grafana agent-mcp delete status add-alloy
 
-# Deploy all
-deploy: deploy-app install-loki install-prometheus install-grafana install-alloy restart-k6
+# User prompt for agent-grafana / agent-mcp (required)
+PROMPT ?=
+
+# Deploy all (cluster + Grafana MCP config and npm dependencies)
+deploy: deploy-app install-loki install-prometheus install-grafana install-alloy restart-k6 setup-mcp-grafana
 
 # Create namespaces used by the app and observability stack
 namespaces:
@@ -35,7 +39,7 @@ deploy-app: namespaces
 install-loki: namespaces
 	helm repo add grafana https://grafana.github.io/helm-charts --force-update
 	helm repo update
-	helm upgrade --install $(LOKI_RELEASE) $(LOKI_CHART) -n $(OLLY_NAMESPACE) --create-namespace \
+	helm upgrade --install $(LOKI_RELEASE) $(LOKI_CHART) -n $(OLLY_NAMESPACE) --create-namespace -f $(LOKI_VALUES) \
 		--set loki.image.tag=2.9.8 \
 		--set promtail.enabled=false \
 		--set fluent-bit.enabled=false \
@@ -72,6 +76,50 @@ restart-k6: namespaces
 # Open Grafana locally at http://localhost:3000
 port-forward-grafana:
 	kubectl port-forward -n $(OLLY_NAMESPACE) svc/$(GRAFANA_RELEASE) 3000:80
+
+# Open Grafana through minikube (NodePort 30300). Keeps a tunnel open on Docker/Windows.
+open-grafana:
+	@echo "Starting Grafana tunnel. On Minikube/Docker (Windows), keep this terminal open."
+	@echo "Login: admin / run 'make grafana-password' in another terminal."
+	@echo "Dashboard: Observability -> Bookinfo Logs (Loki)"
+	minikube service $(GRAFANA_RELEASE) -n $(OLLY_NAMESPACE) --url
+
+# Print Grafana admin password
+grafana-password:
+	@powershell -NoProfile -Command "[System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String((kubectl get secret $(GRAFANA_RELEASE) -n $(OLLY_NAMESPACE) -o jsonpath='{.data.admin-password}')))"
+
+# Verify Loki has log streams from Alloy
+verify-loki:
+	kubectl exec -n $(OLLY_NAMESPACE) deploy/$(GRAFANA_RELEASE) -- wget -qO- "http://loki.olly:3100/loki/api/v1/label/job/values"
+
+# Install dependencies for the Grafana MCP server used by Cursor
+install-mcp-grafana:
+	cd mcp-grafana && npm install
+
+# Register grafana-query in ~/.cursor/mcp.json for Cursor CLI (agent) and IDE
+setup-mcp-grafana: install-mcp-grafana
+	powershell -NoProfile -ExecutionPolicy Bypass -File ./mcp-grafana/scripts/setup-global-mcp.ps1 -RepoRoot "$(CURDIR)"
+
+# Approve grafana-query MCP server in Cursor CLI
+enable-mcp-grafana:
+	agent mcp enable grafana-query
+	agent mcp list
+
+# Run Cursor agent with Grafana MCP tools and a user prompt
+# Example: make agent-grafana PROMPT="List Loki jobs and create a logs count dashboard"
+agent-grafana:
+ifeq ($(strip $(PROMPT)),)
+	$(error PROMPT is required. Example: make agent-grafana PROMPT="List Loki jobs and create a logs count dashboard")
+endif
+	agent -p --trust --force --approve-mcps "$(PROMPT)"
+
+agent-mcp: agent-grafana
+
+# Verify Grafana port-forward and MCP connectivity
+verify-mcp-grafana:
+	@powershell -NoProfile -Command "try { $$r = Invoke-WebRequest -Uri 'http://127.0.0.1:3000/api/health' -UseBasicParsing -TimeoutSec 3; Write-Host 'Grafana: OK (' $$r.StatusCode ')'; exit 0 } catch { Write-Host 'Grafana: unreachable — run make port-forward-grafana in another terminal'; exit 1 }"
+	@powershell -NoProfile -Command "if (-not [System.Environment]::GetEnvironmentVariable('GRAFANA_PASSWORD','User')) { Write-Host 'GRAFANA_PASSWORD: not set — run make setup-mcp-grafana'; exit 1 } else { Write-Host 'GRAFANA_PASSWORD: set' }"
+	agent mcp list
 
 # Open Prometheus locally at http://localhost:9090
 port-forward-prometheus:

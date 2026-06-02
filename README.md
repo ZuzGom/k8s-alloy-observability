@@ -21,6 +21,6 @@ Opis Komponentów Architektury:
 - Tempo: Przechowywanie śladów (traces) do analizy rozproszonej.
 7. AI Analysis Layer:
 - Deweloper wysyła zapytanie w języku naturalnym (np. "Pokaż mi błędy 500 z ostatniej godziny i powiązane z nimi ślady").
-- MCP Server dostarcza kontekst telemetryczny do LLM.
+- MCP Server (`mcp-grafana/`) dostarcza kontekst telemetryczny z Grafany do LLM w Cursorze.
 - LLM generuje gotowe zapytania (PromQL/LogQL).
 8. Grafana Visualization: wygenerowane przez AI zapytania są uruchamiane, tworząc dynamiczne dashboardy i wizualizacje.
