@@ -1,66 +1,60 @@
 # Grafana Query MCP Server
 
-MCP server that lets Cursor discover Grafana datasources, inspect live Loki/Prometheus data, generate queries from natural-language prompts, and **create Grafana dashboards automatically**.
-
-## Prerequisites
-
-1. Grafana reachable locally (usually `make port-forward-grafana`).
-2. Grafana admin password available as `GRAFANA_PASSWORD`.
+MCP server (`grafana-query`) that lets Cursor discover Grafana datasources, run LogQL/PromQL, and create dashboards from natural-language prompts.
 
 ## Setup
 
-```powershell
-make setup-mcp-grafana   # npm install + ~/.cursor/mcp.json + GRAFANA_PASSWORD
-make enable-mcp-grafana  # agent mcp enable grafana-query
-```
-
-Or install dependencies only (IDE project config in `.cursor/mcp.json`):
+From the repository root (after `make deploy` or with Grafana running):
 
 ```powershell
-cd mcp-grafana
-npm install
+make port-forward-grafana   # separate terminal — MCP uses http://127.0.0.1:3000
+make setup-mcp-grafana      # npm install + Cursor MCP config + credentials
+make enable-mcp-grafana   # approve server in Cursor CLI (one-time)
 ```
 
-Set the password in your user environment (recommended):
+Restart Cursor IDE. Verify: `make verify-mcp-grafana`.
 
-```powershell
-$env:GRAFANA_PASSWORD = (make grafana-password)
-[System.Environment]::SetEnvironmentVariable("GRAFANA_PASSWORD", $env:GRAFANA_PASSWORD, "User")
-```
+Credentials are stored in `~/.cursor/grafana-query.env` (not in the repo). The launcher `scripts/run-mcp.mjs` reads that file automatically.
 
-Restart Cursor after setting the variable so `.cursor/mcp.json` can read `${env:GRAFANA_PASSWORD}`.
-
-Project MCP config lives in `.cursor/mcp.json`.
-
-## Tools exposed to Cursor
+## Tools
 
 | Tool | Purpose |
 |------|---------|
-| `grafana_health` | Verify Grafana connectivity |
-| `get_observability_context` | Project defaults (Bookinfo jobs, namespaces, examples) |
+| `grafana_health` | Check Grafana connectivity |
+| `get_observability_context` | Project defaults (Bookinfo jobs, namespaces, example queries) |
 | `list_datasources` | List Loki/Prometheus datasource uids |
 | `loki_label_names` / `loki_label_values` | Inspect live Loki labels |
 | `run_loki_query` | Execute LogQL and return sample results |
 | `prometheus_metric_names` / `prometheus_label_values` | Inspect Prometheus metadata |
-| `run_prometheus_query` | Execute PromQL and return sample results |
+| `run_prometheus_query` | Execute PromQL |
 | `search_dashboards` / `get_dashboard_queries` | Reuse queries from existing dashboards |
-| `suggest_grafana_queries` | Build query suggestions from a natural-language prompt |
+| `suggest_grafana_queries` | Build query suggestions from a prompt |
 | `create_dashboard` | Create a dashboard from explicit panel definitions |
-| `create_dashboard_from_prompt` | Generate queries, validate them, create a dashboard, return URL |
+| `create_dashboard_from_prompt` | Suggest, validate, create dashboard, return URL |
 
-## Example prompts in Cursor
+## Example prompts
 
 - "Create a Grafana dashboard for Bookinfo error logs."
-- "Use Grafana MCP to dashboard bookinfo logs and k6 traffic."
+- "List Loki job labels and show log volume by app."
 - "Build a Prometheus dashboard for CPU usage in the apps namespace."
 
-## Manual smoke test
+More demo prompts: [`../DEMO.md`](../DEMO.md).
 
-With port-forward running:
+## Development
 
 ```powershell
-$env:GRAFANA_PASSWORD = "<password>"
-npm run smoke-test
+cd mcp-grafana
+npm install
+npm run check    # TypeScript check
+npm start        # run MCP server directly (requires GRAFANA_PASSWORD)
 ```
 
-The smoke test validates connectivity, query suggestion, and dashboard creation.
+Environment variables (optional overrides):
+
+| Variable | Default |
+|----------|---------|
+| `GRAFANA_URL` | `http://127.0.0.1:3000` |
+| `GRAFANA_USER` | `admin` |
+| `GRAFANA_PASSWORD` | from `~/.cursor/grafana-query.env` |
+
+See also: [`../SETUP.md`](../SETUP.md).

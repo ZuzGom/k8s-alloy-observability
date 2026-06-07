@@ -6,7 +6,7 @@
   "description": "MCP server for Grafana query discovery and generation",
   "scripts": {
     "start": "tsx src/index.ts",
-    "check": "tsc --noEmit",
+    "check": "tsc --noEmit"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",

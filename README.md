@@ -1,6 +1,8 @@
 # k8s-alloy-observability
 Kubernetes observability setup using Grafana Alloy as an OpenTelemetry Collector to gather, process, and export telemetry data from cluster workloads.
 
+**Uruchomienie:** [`SETUP.md`](SETUP.md) (`make deploy` → `make port-forward-grafana` → `make enable-mcp-grafana`).
+
 # Wstęp i Cele Projektu
 Ten projekt demonstruje nowoczesne podejście do obserwacyjności w środowisku Kubernetes, wykorzystując Grafana Alloy jako centralny procesor danych oraz LLM (Large Language Models) do inteligentnej analizy i wizualizacji telemetrii. Celem systemu jest skrócenie czasu od wystąpienia incydentu do jego wizualizacji poprzez automatyzację zapytań analitycznych. System pozwala deweloperowi na zadawanie pytań w języku naturalnym, które są tłumaczone na techniczne zapytania i natychmiastowo wyświetlane w Grafanie.
 
@@ -44,26 +46,25 @@ Logika sugerowania zapytań (`suggest_grafana_queries`, `create_dashboard_from_p
 ```
 mcp-grafana/
 ├── package.json
-├── README.md              # szczegóły instalacji i narzędzi
+├── README.md
 ├── src/
 │   ├── index.ts           # definicje narzędzi MCP i handlery
 │   ├── grafana-client.ts  # klient HTTP Grafany + kontekst projektu (Bookinfo, k6, joby Loki)
 │   └── dashboard-builder.ts
 └── scripts/
     ├── run-mcp.mjs        # punkt wejścia dla Cursor
-    ├── run-mcp.ps1
     └── setup-global-mcp.ps1
 ```
 
 ## Konfiguracja
 
 ```powershell
-make port-forward-grafana   # Grafana na localhost:3000
-make setup-mcp-grafana      # npm install, ~/.cursor/mcp.json, hasło
+make deploy                 # klaster + setup-mcp-grafana
+make port-forward-grafana   # Grafana na localhost:3000 (osobny terminal)
 make enable-mcp-grafana     # zatwierdzenie serwera w Cursor CLI
 ```
 
-Więcej: `mcp-grafana/README.md`, `SETUP.md` (sekcja MCP).
+Pełna instrukcja: [`SETUP.md`](SETUP.md). Demo prompty: [`DEMO.md`](DEMO.md).
 
 ## Narzędzia MCP
 
