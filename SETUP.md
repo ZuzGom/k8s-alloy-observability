@@ -21,60 +21,38 @@ kubectl config use-context minikube
 
 ## Szybki start
 
-```powershell
-# 1. Wdróż cały stack (aplikacja, Loki, Prometheus, Grafana, Alloy, k6, MCP)
+```1. Wdróż cały stack (aplikacja, Loki, Prometheus, Grafana, Alloy, k6, MCP)
 make deploy
-
-# 2. W osobnym terminalu — tunel do Grafany (zostaw otwarty; MCP łączy się z localhost:3000)
+```
+```2. W osobnym terminalu — tunel do Grafany (zostaw otwarty; MCP łączy się z localhost:3000)
 make port-forward-grafana
-
-# 3. Zatwierdź MCP w Cursor CLI (jednorazowo)
-make enable-mcp-grafana
-
-# 4. Zrestartuj Cursor IDE
-
-# 5. Sprawdź, czy wszystko działa
-make verify-mcp-grafana
-make verify-loki
 ```
 
-`make deploy` automatycznie uruchamia `make setup-mcp-grafana`, które:
-- instaluje zależności npm w `mcp-grafana/`,
-- zapisuje konfigurację MCP do `.cursor/mcp.json` i `~/.cursor/mcp.json`,
-- zapisuje hasło Grafany do `~/.cursor/grafana-query.env`.
+```3. Zatwierdź MCP w Cursor CLI (jednorazowo). Jeżeli nie zadziała dodaj flage --force
+make enable-mcp-grafana
+```
 
-Po restarcie Cursora serwer `grafana-query` powinien być widoczny w **Settings → MCP** jako połączony.
+4. Zrestartuj Cursor IDE albo cursor CLI. Po restarcie Cursora serwer `grafana-query` powinien być widoczny w **Settings → MCP** jako połączony.
 
-### Dostęp do Grafany
+5. Sprawdź, czy wszystko działa (opcjonalnie)
+make verify-mcp-grafana
+make verify-loki
 
-| Metoda | Komenda | URL |
-|--------|---------|-----|
-| Port-forward (zalecane dla MCP) | `make port-forward-grafana` | http://localhost:3000 |
-| Minikube NodePort | `make open-grafana` | URL zwrócony przez minikube (port 30300) |
-
-Login: `admin` / hasło: `make grafana-password`
-
-W folderze **Observability** są gotowe dashboardy: **Bookinfo Logs (Loki)** i **Logs Count (Loki)**.
+```6. Uzyskaj hasło do grapfany i wklej je do .env.example
+make grafana-password
+```
+```5 Uruchom agenta za pomocą CLI (lub w IDE):
+ agent-mcp PROPMPT="twój prompt"
+```
 
 ### Przykładowe prompty w Cursorze
-
 - „Sprawdź health Grafany i wypisz datasources.”
 - „Create a Grafana dashboard for Bookinfo error logs.”
 - „List Loki job labels and show log volume by app.”
 
 Więcej promptów demo: [`DEMO.md`](DEMO.md).
 
-### Cursor CLI (`agent`)
-
-Z katalogu projektu (wymaga działającego port-forward):
-
-```powershell
-make agent-grafana PROMPT="List Loki jobs and create a logs count dashboard"
-```
-
-Przy pierwszym uruchomieniu: `make enable-mcp-grafana`. W trybie `-p` dodaj `--force` lub użyj targetu `make agent-grafana`, który już go zawiera.
-
-## Codzienne komendy
+## Inne komendy
 
 ```powershell
 make status              # stan podów w apps i olly
@@ -97,12 +75,6 @@ Alloy zbiera logi z podów i wysyła je do Loki (`http://loki.olly:3100`). Grafa
 
 k6 działa jako **jednorazowy Job** (~30 s). Po zakończeniu pod ma status `Completed` — to normalne. Aby odświeżyć logi: `make restart-k6`. Ustaw w Grafanie zakres **Last 15 minutes**.
 
-W Explore → Loki:
-
-```logql
-{job="loki.source.kubernetes.bookinfo"}
-```
-
 ## Rozwiązywanie problemów
 
 | Objaw | Rozwiązanie |
@@ -113,25 +85,3 @@ W Explore → Loki:
 | `Connection failed` (MCP) | `make setup-mcp-grafana` ponownie |
 | `No MCP servers configured` (CLI spoza repo) | `make setup-mcp-grafana` |
 | Bookinfo nie odpowiada | `make status`, ewentualnie `make delete && make deploy` |
-
-Test połączenia z aplikacją Bookinfo:
-
-```powershell
-kubectl run curl -n apps --rm -it --image=curlimages/curl -- sh
-# w shellu: curl http://productpage:9080/productpage
-```
-
-## Instalacja komponentów osobno
-
-Wszystko poniżej jest już częścią `make deploy`. Użyj tych targetów tylko przy częściowej reinstalacji:
-
-| Komponent | Target |
-|-----------|--------|
-| Namespace'y + Bookinfo | `make deploy-app` |
-| Loki | `make install-loki` |
-| Prometheus | `make install-prometheus` |
-| Grafana | `make install-grafana` |
-| Alloy | `make install-alloy` |
-| MCP (npm + konfiguracja Cursor) | `make setup-mcp-grafana` |
-
-Szczegóły MCP: [`mcp-grafana/README.md`](mcp-grafana/README.md).
