@@ -1,0 +1,293 @@
+service:
+  type: NodePort
+  port: 80
+  nodePort: 30300
+
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - name: Loki
+        type: loki
+        uid: loki
+        access: proxy
+        url: http://loki.olly:3100
+        isDefault: true
+        editable: true
+        jsonData:
+          maxLines: 1000
+          volumeEnabled: true
+      - name: Prometheus
+        type: prometheus
+        uid: prometheus
+        access: proxy
+        url: http://prometheus-server.olly:80
+        editable: true
+
+dashboardProviders:
+  dashboardproviders.yaml:
+    apiVersion: 1
+    providers:
+      - name: default
+        orgId: 1
+        folder: Observability
+        type: file
+        disableDeletion: false
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards/default
+
+dashboards:
+  default:
+    bookinfo-logs:
+      json: |
+        {
+          "uid": "bookinfo-logs",
+          "title": "Bookinfo Logs (Loki)",
+          "tags": ["loki", "bookinfo"],
+          "timezone": "browser",
+          "schemaVersion": 39,
+          "version": 1,
+          "refresh": "10s",
+          "time": {
+            "from": "now-1h",
+            "to": "now"
+          },
+          "panels": [
+            {
+              "id": 1,
+              "type": "logs",
+              "title": "Bookinfo application logs",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki"
+              },
+              "gridPos": {
+                "h": 12,
+                "w": 24,
+                "x": 0,
+                "y": 0
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "{job=\"loki.source.kubernetes.bookinfo\"}",
+                  "queryType": "range"
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "type": "logs",
+              "title": "k6 load generator logs",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki"
+              },
+              "gridPos": {
+                "h": 12,
+                "w": 24,
+                "x": 0,
+                "y": 12
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "{job=\"loki.source.kubernetes.k6\"}",
+                  "queryType": "range"
+                }
+              ]
+            }
+          ]
+        }
+    logs-count:
+      json: |
+        {
+          "uid": "logs-count",
+          "title": "Logs Count (Loki)",
+          "tags": ["loki", "logs", "count"],
+          "timezone": "browser",
+          "schemaVersion": 39,
+          "version": 1,
+          "refresh": "10s",
+          "time": {
+            "from": "now-15m",
+            "to": "now"
+          },
+          "panels": [
+            {
+              "id": 1,
+              "type": "stat",
+              "title": "Total logs",
+              "datasource": { "type": "loki", "uid": "loki" },
+              "gridPos": { "h": 4, "w": 8, "x": 0, "y": 0 },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "decimals": 0,
+                  "color": { "mode": "thresholds" },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [{ "color": "green", "value": null }]
+                  }
+                },
+                "overrides": []
+              },
+              "options": {
+                "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+                "orientation": "auto",
+                "textMode": "auto",
+                "colorMode": "value",
+                "graphMode": "area"
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "sum(count_over_time({job=~\"loki.source.kubernetes.+\"}[$__range]))",
+                  "queryType": "instant"
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "type": "stat",
+              "title": "Bookinfo logs",
+              "datasource": { "type": "loki", "uid": "loki" },
+              "gridPos": { "h": 4, "w": 8, "x": 8, "y": 0 },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "decimals": 0,
+                  "color": { "mode": "thresholds" },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [{ "color": "blue", "value": null }]
+                  }
+                },
+                "overrides": []
+              },
+              "options": {
+                "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+                "orientation": "auto",
+                "textMode": "auto",
+                "colorMode": "value",
+                "graphMode": "area"
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "sum(count_over_time({job=\"loki.source.kubernetes.bookinfo\"}[$__range]))",
+                  "queryType": "instant"
+                }
+              ]
+            },
+            {
+              "id": 3,
+              "type": "stat",
+              "title": "k6 logs",
+              "datasource": { "type": "loki", "uid": "loki" },
+              "gridPos": { "h": 4, "w": 8, "x": 16, "y": 0 },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "decimals": 0,
+                  "color": { "mode": "thresholds" },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [{ "color": "orange", "value": null }]
+                  }
+                },
+                "overrides": []
+              },
+              "options": {
+                "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+                "orientation": "auto",
+                "textMode": "auto",
+                "colorMode": "value",
+                "graphMode": "area"
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "sum(count_over_time({job=\"loki.source.kubernetes.k6\"}[$__range]))",
+                  "queryType": "instant"
+                }
+              ]
+            },
+            {
+              "id": 4,
+              "type": "timeseries",
+              "title": "Log rate by job",
+              "datasource": { "type": "loki", "uid": "loki" },
+              "gridPos": { "h": 8, "w": 24, "x": 0, "y": 4 },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "logs/s",
+                  "custom": {
+                    "drawStyle": "line",
+                    "lineInterpolation": "linear",
+                    "fillOpacity": 10
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "sum by (job) (count_over_time({job=~\"loki.source.kubernetes.+\"}[1m]))",
+                  "queryType": "range"
+                }
+              ]
+            },
+            {
+              "id": 5,
+              "type": "timeseries",
+              "title": "Bookinfo log count by app",
+              "datasource": { "type": "loki", "uid": "loki" },
+              "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "custom": {
+                    "drawStyle": "line",
+                    "lineInterpolation": "linear",
+                    "fillOpacity": 10
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "sum by (app) (count_over_time({job=\"loki.source.kubernetes.bookinfo\"}[1m]))",
+                  "queryType": "range"
+                }
+              ]
+            },
+            {
+              "id": 6,
+              "type": "timeseries",
+              "title": "Total log volume",
+              "datasource": { "type": "loki", "uid": "loki" },
+              "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "custom": {
+                    "drawStyle": "line",
+                    "lineInterpolation": "linear",
+                    "fillOpacity": 10
+                  }
+                },
+                "overrides": []
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "expr": "sum(count_over_time({job=~\"loki.source.kubernetes.+\"}[1m]))",
+                  "queryType": "range"
+                }
+              ]
+            }
+          ]
+        }

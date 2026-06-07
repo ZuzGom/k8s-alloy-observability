@@ -1,0 +1,10 @@
+﻿{
+    "mcpServers":  {
+                       "grafana-query":  {
+                                             "command":  "C:/PROGRA~1/nodejs/node.exe",
+                                             "args":  [
+                                                          "C:/Users/aleks/Documents/agh/semestr_8/suu/suu_projekt/k8s-alloy-observability/mcp-grafana/scripts/run-mcp.mjs"
+                                                      ]
+                                         }
+                   }
+}

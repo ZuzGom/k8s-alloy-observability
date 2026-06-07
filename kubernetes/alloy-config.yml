@@ -1,0 +1,129 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alloy-config
+  namespace: olly
+data:
+  config.alloy: |
+    discovery.kubernetes "pods" {
+      role = "pod"
+    }
+
+    discovery.relabel "bookinfo_pods" {
+      targets = discovery.kubernetes.pods.targets
+
+      rule {
+        action        = "keep"
+        source_labels = ["__meta_kubernetes_namespace"]
+        regex         = "apps"
+      }
+
+      rule {
+        action        = "keep"
+        source_labels = ["__meta_kubernetes_pod_label_app"]
+        regex         = "productpage|details|ratings|reviews"
+      }
+
+      rule {
+        action        = "replace"
+        source_labels = ["__meta_kubernetes_pod_label_app"]
+        target_label  = "app"
+      }
+
+      rule {
+        action        = "replace"
+        source_labels = ["__meta_kubernetes_namespace"]
+        target_label  = "namespace"
+      }
+
+      rule {
+        action        = "replace"
+        source_labels = ["__meta_kubernetes_pod_name"]
+        target_label  = "pod"
+      }
+    }
+
+    discovery.relabel "k6_pods" {
+      targets = discovery.kubernetes.pods.targets
+
+      rule {
+        action        = "keep"
+        source_labels = ["__meta_kubernetes_namespace"]
+        regex         = "apps"
+      }
+
+      rule {
+        action        = "keep"
+        source_labels = ["__meta_kubernetes_pod_label_job_name"]
+        regex         = "k6-load-generator"
+      }
+
+      rule {
+        action        = "replace"
+        target_label  = "app"
+        replacement   = "k6"
+      }
+
+      rule {
+        action        = "replace"
+        source_labels = ["__meta_kubernetes_namespace"]
+        target_label  = "namespace"
+      }
+
+      rule {
+        action        = "replace"
+        source_labels = ["__meta_kubernetes_pod_name"]
+        target_label  = "pod"
+      }
+    }
+
+    loki.source.kubernetes "bookinfo" {
+      targets    = discovery.relabel.bookinfo_pods.output
+      forward_to = [loki.process.bookinfo.receiver]
+    }
+
+    loki.source.kubernetes "k6" {
+      targets    = discovery.relabel.k6_pods.output
+      forward_to = [loki.process.k6.receiver]
+    }
+
+    loki.process "bookinfo" {
+      forward_to = [loki.write.default.receiver]
+
+      stage.cri {}
+
+      stage.metrics {
+        metric.counter {
+          name              = "log_lines_total"
+          description       = "Total Bookinfo log lines seen by Alloy"
+          prefix            = "bookinfo_"
+          action            = "inc"
+          match_all         = true
+          max_idle_duration = "24h"
+        }
+      }
+    }
+
+    loki.process "k6" {
+      forward_to = [loki.write.default.receiver]
+
+      stage.cri {}
+
+      stage.metrics {
+        metric.counter {
+          name              = "log_lines_total"
+          description       = "Total k6 log lines seen by Alloy"
+          prefix            = "k6_"
+          action            = "inc"
+          match_all         = true
+          max_idle_duration = "24h"
+        }
+      }
+    }
+
+    loki.write "default" {
+      endpoint {
+        url = "http://loki.olly:3100/loki/api/v1/push"
+      }
+    }
+
