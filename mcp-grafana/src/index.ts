@@ -5,6 +5,7 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
+import { inferPanelType } from "./dashboard-builder.js";
 import { GrafanaClient, loadConfig } from "./grafana-client.js";
 
 const client = new GrafanaClient(loadConfig());
@@ -420,6 +421,12 @@ async function main() {
             input.panels.map(async (panel) => ({
               title: panel.title,
               queryType: panel.query_type,
+              panelType: inferPanelType({
+                title: panel.title,
+                queryType: panel.query_type,
+                expr: panel.expr,
+                datasourceUid: panel.datasource_uid ?? "placeholder",
+              }),
               expr: panel.expr,
               datasourceUid:
                 panel.datasource_uid ??

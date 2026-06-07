@@ -23,6 +23,24 @@ data:
         source_labels = ["__meta_kubernetes_pod_label_app"]
         regex         = "productpage|details|ratings|reviews"
       }
+
+      rule {
+        action        = "replace"
+        source_labels = ["__meta_kubernetes_pod_label_app"]
+        target_label  = "app"
+      }
+
+      rule {
+        action        = "replace"
+        source_labels = ["__meta_kubernetes_namespace"]
+        target_label  = "namespace"
+      }
+
+      rule {
+        action        = "replace"
+        source_labels = ["__meta_kubernetes_pod_name"]
+        target_label  = "pod"
+      }
     }
 
     discovery.relabel "k6_pods" {
@@ -38,6 +56,24 @@ data:
         action        = "keep"
         source_labels = ["__meta_kubernetes_pod_label_job_name"]
         regex         = "k6-load-generator"
+      }
+
+      rule {
+        action        = "replace"
+        target_label  = "app"
+        replacement   = "k6"
+      }
+
+      rule {
+        action        = "replace"
+        source_labels = ["__meta_kubernetes_namespace"]
+        target_label  = "namespace"
+      }
+
+      rule {
+        action        = "replace"
+        source_labels = ["__meta_kubernetes_pod_name"]
+        target_label  = "pod"
       }
     }
 

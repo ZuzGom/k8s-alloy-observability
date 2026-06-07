@@ -1,6 +1,7 @@
 import {
   buildDashboardFromPanels,
   buildDashboardUid,
+  inferPanelType,
   panelTitleFromSuggestion,
   titleFromPrompt,
   type DashboardPanelInput,
@@ -88,8 +89,9 @@ export class GrafanaClient {
       ...PROJECT_CONTEXT,
       grafanaUrl: this.config.url,
       notes: [
-        "Bookinfo logs are collected from pods in namespace apps with app labels productpage, details, ratings, reviews.",
-        "k6 logs come from job k6-load-generator in namespace apps.",
+        "Bookinfo logs use Loki labels job, app, namespace, pod (app requires Alloy relabel rules).",
+        "k6 logs use job loki.source.kubernetes.k6 and app=k6.",
+        "k6 runs ~30s — use Grafana time range Last 15 minutes right after make restart-k6.",
         "Default Loki datasource uid is usually 'loki'. Default Prometheus uid is usually 'prometheus'.",
       ],
     };
@@ -418,6 +420,12 @@ export class GrafanaClient {
       panels.push({
         title: panelTitleFromSuggestion(suggestion, prompt),
         queryType: suggestion.queryType,
+        panelType: inferPanelType({
+          title: suggestion.rationale,
+          queryType: suggestion.queryType,
+          expr: suggestion.query,
+          datasourceUid: suggestion.datasourceUid,
+        }),
         expr: suggestion.query,
         datasourceUid: suggestion.datasourceUid,
       });
@@ -484,8 +492,35 @@ export class GrafanaClient {
         const bookinfoJob =
           jobValues.find((job) => job.includes("bookinfo")) ?? PROJECT_CONTEXT.lokiJobs[0];
         const k6Job = jobValues.find((job) => job.includes("k6")) ?? PROJECT_CONTEXT.lokiJobs[1];
+        const groupLabel = labels.includes("app") ? "app" : "instance";
+        const wantsVolume = /volume|count|over time|logs per|log count|dashboard/.test(lower);
+        const wantsRawLogs = /raw log|log lines|show logs|logs panel/.test(lower);
 
-        if (/\bk6\b|load generator|traffic/.test(lower)) {
+        if (wantsVolume) {
+          suggestions.push({
+            queryType: "loki",
+            datasourceUid: loki.uid,
+            datasourceName: loki.name,
+            query: `sum(count_over_time({job=~"loki.source.kubernetes.+"}[1m]))`,
+            rationale: "Total log volume per minute.",
+          });
+          suggestions.push({
+            queryType: "loki",
+            datasourceUid: loki.uid,
+            datasourceName: loki.name,
+            query: `sum by (job) (count_over_time({job=~"loki.source.kubernetes.+"}[1m]))`,
+            rationale: "Log count by Loki job.",
+          });
+          suggestions.push({
+            queryType: "loki",
+            datasourceUid: loki.uid,
+            datasourceName: loki.name,
+            query: `sum by (${groupLabel}) (count_over_time({job="${bookinfoJob}"}[1m]))`,
+            rationale: `Bookinfo log volume by ${groupLabel}.`,
+          });
+        }
+
+        if (/\bk6\b|load generator|traffic/.test(lower) && (!wantsVolume || wantsRawLogs)) {
           suggestions.push({
             queryType: "loki",
             datasourceUid: loki.uid,
@@ -495,7 +530,7 @@ export class GrafanaClient {
           });
         }
 
-        if (/bookinfo|productpage|details|ratings|reviews|application log/.test(lower)) {
+        if (/bookinfo|productpage|details|ratings|reviews|application log/.test(lower) && (!wantsVolume || wantsRawLogs)) {
           let query = `{job="${bookinfoJob}"}`;
           if (/error|fail|exception|warn/.test(lower)) {
             query += ' |~ "(?i)error|exception|fail|warn"';

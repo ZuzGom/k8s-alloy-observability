@@ -111,7 +111,7 @@ dashboards:
           "version": 1,
           "refresh": "10s",
           "time": {
-            "from": "now-1h",
+            "from": "now-15m",
             "to": "now"
           },
           "panels": [
@@ -234,7 +234,7 @@ dashboards:
               "targets": [
                 {
                   "refId": "A",
-                  "expr": "sum by (job) (rate({job=~\"loki.source.kubernetes.+\"}[5m]))",
+                  "expr": "sum by (job) (count_over_time({job=~\"loki.source.kubernetes.+\"}[1m]))",
                   "queryType": "range"
                 }
               ]
@@ -259,7 +259,7 @@ dashboards:
               "targets": [
                 {
                   "refId": "A",
-                  "expr": "sum by (app) (count_over_time({job=\"loki.source.kubernetes.bookinfo\"}[5m]))",
+                  "expr": "sum by (app) (count_over_time({job=\"loki.source.kubernetes.bookinfo\"}[1m]))",
                   "queryType": "range"
                 }
               ]
@@ -284,7 +284,7 @@ dashboards:
               "targets": [
                 {
                   "refId": "A",
-                  "expr": "sum(count_over_time({job=~\"loki.source.kubernetes.+\"}[5m]))",
+                  "expr": "sum(count_over_time({job=~\"loki.source.kubernetes.+\"}[1m]))",
                   "queryType": "range"
                 }
               ]

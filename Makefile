@@ -16,7 +16,7 @@ LOKI_CHART=grafana/loki-stack
 ALLOY_CHART=grafana/alloy
 PROMETHEUS_CHART=prometheus-community/prometheus
 
-.PHONY: deploy namespaces deploy-app install-loki install-grafana install-alloy install-prometheus restart-k6 port-forward-grafana port-forward-prometheus open-grafana grafana-password verify-loki install-mcp-grafana setup-mcp-grafana enable-mcp-grafana verify-mcp-grafana agent-grafana agent-mcp delete status add-alloy
+.PHONY: deploy namespaces deploy-app install-loki install-grafana install-alloy install-prometheus restart-k6 port-forward-grafana port-forward-prometheus open-grafana grafana-password verify-loki install-mcp-grafana setup-mcp-grafana enable-mcp-grafana verify-mcp-grafana agent-grafana agent-mcp update-alloy update-dashboards fix-dashboard-data delete status add-alloy
 
 # User prompt for agent-grafana / agent-mcp (required)
 PROMPT ?=
@@ -114,6 +114,19 @@ endif
 	agent -p --trust --force --approve-mcps "$(PROMPT)"
 
 agent-mcp: agent-grafana
+
+# Apply Alloy label rules and restart log collection
+update-alloy:
+	kubectl apply -f $(ALLOY_CONFIG)
+	kubectl rollout restart deployment/$(ALLOY_RELEASE) -n $(OLLY_NAMESPACE)
+	kubectl rollout status deployment/$(ALLOY_RELEASE) -n $(OLLY_NAMESPACE) --timeout=180s
+
+# Recreate provisioned Grafana dashboards via API (after query fixes)
+update-dashboards:
+	powershell -NoProfile -Command "$$p = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String((kubectl get secret $(GRAFANA_RELEASE) -n $(OLLY_NAMESPACE) -o jsonpath='{.data.admin-password}'))); $$env:GRAFANA_PASSWORD = $$p; npx tsx mcp-grafana/scripts/create-logs-count-dashboard.ts"
+
+# Refresh Alloy labels, k6 traffic, and provisioned Grafana dashboards before demos
+fix-dashboard-data: update-alloy restart-k6 install-grafana
 
 # Verify Grafana port-forward and MCP connectivity
 verify-mcp-grafana:

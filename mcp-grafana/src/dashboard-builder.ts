@@ -23,7 +23,27 @@ export interface DashboardBuildOptions {
   timeTo?: string;
 }
 
-export function slugify(value: string): string {
+export function isMetricLogQL(expr: string): boolean {
+  return /\b(count_over_time|bytes_over_time|rate|sum|avg|max|min|quantile_over_time)\s*\(/i.test(expr);
+}
+
+export function inferPanelType(panel: DashboardPanelInput): NonNullable<DashboardPanelInput["panelType"]> {
+  if (panel.panelType) {
+    return panel.panelType;
+  }
+  if (panel.queryType === "prometheus") {
+    return "timeseries";
+  }
+  if (isMetricLogQL(panel.expr)) {
+    if (/^sum\s*\(\s*count_over_time/i.test(panel.expr) && !/\sby\s*\(/i.test(panel.expr)) {
+      return "stat";
+    }
+    return "timeseries";
+  }
+  return "logs";
+}
+
+function slugify(value: string): string {
   return value
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
@@ -149,8 +169,9 @@ export function buildDashboardFromPanels(
   panels: DashboardPanelInput[],
 ) {
   const builtPanels = panels.map((panel, index) => {
-    const defaultHeight = panel.panelType === "stat" ? 4 : 12;
-    const defaultWidth = panel.panelType === "stat" ? 8 : 24;
+    const panelType = inferPanelType(panel);
+    const defaultHeight = panelType === "stat" ? 4 : 12;
+    const defaultWidth = panelType === "stat" ? 8 : 24;
     const gridPos: GridPos = panel.gridPos ?? {
       h: defaultHeight,
       w: defaultWidth,
@@ -158,10 +179,10 @@ export function buildDashboardFromPanels(
       y: index * defaultHeight,
     };
 
-    if (panel.panelType === "stat") {
+    if (panelType === "stat") {
       return buildStatPanel(index + 1, panel.title, panel.expr, panel.datasourceUid, gridPos);
     }
-    if (panel.panelType === "timeseries" || panel.queryType === "prometheus") {
+    if (panelType === "timeseries") {
       return buildTimeseriesPanel(
         index + 1,
         panel.title,
@@ -184,7 +205,7 @@ export function buildDashboardFromPanels(
       version: 0,
       refresh: options.refresh ?? "10s",
       time: {
-        from: options.timeFrom ?? "now-1h",
+        from: options.timeFrom ?? "now-15m",
         to: options.timeTo ?? "now",
       },
       panels: builtPanels,
