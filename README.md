@@ -76,13 +76,13 @@ Grafana jest instalowana z obrazu `grafana/grafana` i wartościami z [`kubernete
 
 Aby uzyskać lokalny dostęp do Grafany należy wykonać port forwarding:
 
-```powershell
+```bash
 make port-forward-grafana
 ```
 
 Po uruchomieniu port-forward Grafana jest dostępna pod `http://127.0.0.1:3000`. Login to `admin`, a hasło można odczytać komendą:
 
-```powershell
+```bash
 make grafana-password
 ```
 
